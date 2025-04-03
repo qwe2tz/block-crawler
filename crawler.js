@@ -1,11 +1,10 @@
-import { ethers } from "ethers";
-import fs from "fs";
-
+const ethers = require("ethers");
+const fs = require("fs");
 
 const provider = new ethers.JsonRpcProvider("https://astrosat-parachain-rpc.origin-trail.network");
 
-const CHAIN = 'neuroweb';
-const NET='testnet'
+const CHAIN = "neuroweb";
+const NET = "testnet";
 const CONTRACT_ADDRESS = "0x996eF3cfd6c788618C359Fb538D49281a0b13805";
 const START_BLOCK = 7248332;
 const OUTPUT_FILE = `./addresses/${CHAIN}_${NET}_addresses.txt`;
@@ -18,24 +17,18 @@ function sleep(ms) {
 }
 
 // Function to fetch a block with retry mechanism
-async function getBlockWithRetry(
-  blockNumber,
-  maxRetries = 10,
-  delay = 2000
-){
+async function getBlockWithRetry(blockNumber, maxRetries = 10, delay = 2000) {
   let retries = 0;
   while (true) {
     try {
       const block = await provider.getBlock(blockNumber, true);
-      return block
+      return block;
     } catch (err) {
       retries++;
       if (retries >= maxRetries) {
-        throw new Error(
-          `Failed to get block ${blockNumber} after ${maxRetries} retries: ${err}`
-        );
+        throw new Error(`Failed to get block ${blockNumber} after ${maxRetries} retries: ${err}`);
       }
-      console.log('Error', err);
+      console.log("Error", err);
       await sleep(delay);
     }
   }
@@ -80,7 +73,7 @@ async function processBlocks() {
       const blocks = await Promise.all(batchPromises);
 
       for (const block of blocks) {
-        console.log('Processing block', block.number);
+        console.log("Processing block", block.number);
         for (const tx of block.transactions) {
           console.log(`Processing transaction ${tx}`);
           const transaction = await getTransactionDetails(tx);
@@ -92,10 +85,9 @@ async function processBlocks() {
           ) {
             console.log(`TX ${tx} is to the contract address`);
 
-            if (addresses.includes(transaction.from.toLowerCase())) {  
+            if (addresses.includes(transaction.from.toLowerCase())) {
               console.log(`Address ${transaction.from.toLowerCase()} is already processed`);
               continue;
-
             } else {
               writeStream.write(`${transaction.from.toLowerCase()}\n`);
               addresses.push(transaction.from.toLowerCase());
