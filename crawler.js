@@ -1,16 +1,21 @@
 const ethers = require("ethers");
 const fs = require("fs");
 
-const provider = new ethers.JsonRpcProvider("https://astrosat-parachain-rpc.origin-trail.network");
+const args = process.argv.slice(2);
 
-const CHAIN = "neuroweb";
-const NET = "testnet";
-const CONTRACT_ADDRESS = "0x996eF3cfd6c788618C359Fb538D49281a0b13805";
-const START_BLOCK = 7248332;
-const OUTPUT_FILE = `./addresses/${CHAIN}_${NET}_addresses.txt`;
+console.log("Args: ", args);
+const provider = new ethers.JsonRpcProvider(args[0]);
+
+const CHAIN = args[1];
+const CONTRACT_ADDRESS = args[2];
+const START_BLOCK = args[3];
+const NET = args[4] | "mainnet";
+const DATE_TIME = args[5];
+const OUTPUT_FILE = `./addresses/${CHAIN}_${NET}_${DATE_TIME}.txt`;
 const BATCH_SIZE = 10;
 
 const addresses = [];
+
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
