@@ -6,8 +6,8 @@ const provider = new ethers.JsonRpcProvider("https://astrosat-parachain-rpc.orig
 
 const CHAIN = 'neuroweb';
 const NET='testnet'
-const CONTRACT_ADDRESS = "0x4464A1c89C09a8D6062628D22AF9327485C81DB8";
-const START_BLOCK = 5708551;
+const CONTRACT_ADDRESS = "0x996eF3cfd6c788618C359Fb538D49281a0b13805";
+const START_BLOCK = 7248332;
 const OUTPUT_FILE = `./addresses/${CHAIN}_${NET}_addresses.txt`;
 const BATCH_SIZE = 10;
 
