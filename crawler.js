@@ -109,7 +109,7 @@ async function processBlocks() {
 
             if (!addresses.has(transaction.from)) {
               console.log(`[NEW ADDRESS] ${transaction.from} interacted with contract. Saving...`);
-              writeStream.write(`${transaction.from}\n`);
+              writeStream.write(`[${new Date().toISOString()}] ${transaction.from}\n`);
               addresses.add(transaction.from);
             } else {
               console.log(`[SKIP] Address ${transaction.from} already recorded.`);
