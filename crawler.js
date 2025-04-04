@@ -2,6 +2,14 @@ const ethers = require("ethers");
 const fs = require("fs");
 const path = require("path");
 
+
+const networks = {
+  neuroweb: {
+    testnet: "https://lofar-testnet.origin-trail.network",
+    mainnet: "https://astrosat-parachain-rpc.origin-trail.network",
+  },
+};
+
 const args = process.argv.slice(2);
 
 const CHAIN = args[0] || "neuroweb";
@@ -13,11 +21,15 @@ const BATCH_SIZE = 10;
 const RETRY_LIMIT = 5;
 const RETRY_DELAY = 3000;
 
-console.log(
-  `[INFO] Starting crawler for ${CHAIN} network, contract ${CONTRACT_ADDRESS}, starting from block ${START_BLOCK}`
-);
+console.log(`[INFO] Starting crawler for ${CHAIN} ${NET}, starting from block ${START_BLOCK}`);
+console.log(`[INFO] Contract address: ${CONTRACT_ADDRESS}`);
 
-const provider = new ethers.JsonRpcProvider(networks[CHAIN] || networks.neuroweb);
+if (!networks[CHAIN][NET]) {
+  throw new Error(`Network ${CHAIN} with net ${NET} not supported.`);
+}
+
+const API_KEY = args[4] || "";
+const provider = new ethers.JsonRpcProvider(`${networks[CHAIN][NET]}${API_KEY}`);
 
 const addresses = new Set();
 
@@ -72,7 +84,6 @@ async function getTransactionDetails(txHash, maxRetries = RETRY_LIMIT, delay = R
 // Main function to process blocks and transactions
 async function processBlocks() {
   try {
-    console.log(`[INFO] Connecting to ${networks[CHAIN] || networks.neuroweb}`);
     const latestBlock = await provider.getBlockNumber();
     console.log(`[INFO] Latest block on chain: ${latestBlock}`);
     console.log(`[INFO] Starting from block ${START_BLOCK}`);
