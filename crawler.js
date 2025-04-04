@@ -4,12 +4,6 @@ const path = require("path");
 
 const args = process.argv.slice(2);
 
-const networks = {
-  neuroweb: "https://astrosat-parachain-rpc.origin-trail.network",
-  base: "",
-  gnosis: "",
-};
-
 const CHAIN = args[0] || "neuroweb";
 const CONTRACT_ADDRESS = args[1].toLowerCase();
 const START_BLOCK = parseInt(args[2] || 0);
