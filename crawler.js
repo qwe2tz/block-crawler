@@ -4,7 +4,10 @@ const path = require("path");
 
 
 const networks = {
-  base: { mainnet: "https://site1.moralis-nodes.com/base/" },
+  base: {
+    mainnet: "https://site1.moralis-nodes.com/base/",
+    testnet: "https://site1.moralis-nodes.com/base-sepolia/",
+  },
   gnosis: { mainnet: "https://site1.moralis-nodes.com/gnosis/" },
   neuroweb: {
     testnet: "https://lofar-testnet.origin-trail.network",
