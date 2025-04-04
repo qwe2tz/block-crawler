@@ -29,7 +29,9 @@ if (!networks[CHAIN][NET]) {
 }
 
 const API_KEY = args[4] || "";
-const provider = new ethers.JsonRpcProvider(`${networks[CHAIN][NET]}${API_KEY}`);
+const url = API_KEY != "" ? networks[CHAIN][NET] + API_KEY : networks[CHAIN][NET];
+
+const provider = new ethers.JsonRpcProvider(url);
 
 const addresses = new Set();
 
