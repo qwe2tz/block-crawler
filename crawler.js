@@ -8,7 +8,10 @@ const networks = {
     mainnet: "https://site1.moralis-nodes.com/base/",
     testnet: "https://site1.moralis-nodes.com/base-sepolia/",
   },
-  gnosis: { mainnet: "https://site1.moralis-nodes.com/gnosis/" },
+  gnosis: {
+    mainnet: "https://site1.moralis-nodes.com/gnosis/",
+    testnet: "https://api-chiado-archive.dwellir.com/",
+  },
   neuroweb: {
     testnet: "https://lofar-testnet.origin-trail.network",
     mainnet: "https://astrosat-parachain-rpc.origin-trail.network",
