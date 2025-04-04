@@ -2,8 +2,7 @@
 START_TIME=$(date +"%Y-%m-%d_%H-%M-%S");
 
 nohup node crawler.js \
-  "https://astrosat-parachain-rpc.origin-trail.network" \
-  'neuroweb' \
+  "neuroweb" \
   "0x996eF3cfd6c788618C359Fb538D49281a0b13805" \
   "7248332" \
   "mainnet" \

@@ -1,58 +1,76 @@
 const ethers = require("ethers");
 const fs = require("fs");
+const path = require("path");
 
 const args = process.argv.slice(2);
 
-console.log("Args: ", args);
-const provider = new ethers.JsonRpcProvider(args[0]);
+const networks = {
+  neuroweb: "https://astrosat-parachain-rpc.origin-trail.network",
+  base: "",
+  gnosis: "",
+};
 
-const CHAIN = args[1];
-const CONTRACT_ADDRESS = args[2];
-const START_BLOCK = args[3];
-const NET = args[4] | "mainnet";
-const DATE_TIME = args[5];
-const OUTPUT_FILE = `./addresses/${CHAIN}_${NET}_${DATE_TIME}.txt`;
+const CHAIN = args[0] || "neuroweb";
+const CONTRACT_ADDRESS = args[1].toLowerCase();
+const START_BLOCK = parseInt(args[2] || 0);
+const NET = args[3] || "mainnet";
+const OUTPUT_FILE = path.join(__dirname, "addresses", `${CHAIN}-${NET}-${CONTRACT_ADDRESS}.txt`);
 const BATCH_SIZE = 10;
+const RETRY_LIMIT = 5;
+const RETRY_DELAY = 3000;
 
-const addresses = [];
+console.log(
+  `[INFO] Starting crawler for ${CHAIN} network, contract ${CONTRACT_ADDRESS}, starting from block ${START_BLOCK}`
+);
 
+const provider = new ethers.JsonRpcProvider(networks[CHAIN] || networks.neuroweb);
+
+const addresses = new Set();
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-// Function to fetch a block with retry mechanism
-async function getBlockWithRetry(blockNumber, maxRetries = 10, delay = 2000) {
+async function getBlockWithRetry(blockNumber, maxRetries = RETRY_LIMIT, delay = RETRY_DELAY) {
   let retries = 0;
-  while (true) {
+  while (retries < maxRetries) {
     try {
       const block = await provider.getBlock(blockNumber, true);
-      return block;
-    } catch (err) {
-      retries++;
-      if (retries >= maxRetries) {
-        throw new Error(`Failed to get block ${blockNumber} after ${maxRetries} retries: ${err}`);
+      if (block) {
+        return block;
       }
-      console.log("Error", err);
-      await sleep(delay);
+    } catch (err) {
+      console.error(
+        `[ERROR] Block ${blockNumber} fetch failed: ${err.message} (Retrying in ${delay / 1000}s)`
+      );
     }
+    retries++;
+    await sleep(delay);
   }
+  console.error(`[FATAL] Failed to fetch block ${blockNumber} after ${maxRetries} retries.`);
+  return null;
 }
 
-// Function to fetch transaction details by hash
-async function getTransactionDetails(txHash) {
-  try {
-    const tx = await provider.getTransaction(txHash);
-
-    if (tx) {
-      return {
-        hash: tx.hash,
-        from: tx.from,
-        to: tx.to,
-      };
+// Fetch transaction details with retry logic
+async function getTransactionDetails(txHash, maxRetries = RETRY_LIMIT, delay = RETRY_DELAY) {
+  let retries = 0;
+  while (retries < maxRetries) {
+    try {
+      const tx = await provider.getTransaction(txHash);
+      if (tx) {
+        return {
+          hash: tx.hash,
+          from: tx.from.toLowerCase(),
+          to: tx.to ? tx.to.toLowerCase() : null,
+        };
+      }
+    } catch (err) {
+      console.error(
+        `[ERROR] Transaction ${txHash} fetch failed: ${err.message} (Retrying in ${delay / 1000}s)`
+      );
     }
-  } catch (err) {
-    console.log(`Error fetching transaction ${txHash}:, err`);
+    retries++;
+    await sleep(delay);
   }
   return null;
 }
@@ -60,54 +78,58 @@ async function getTransactionDetails(txHash) {
 // Main function to process blocks and transactions
 async function processBlocks() {
   try {
+    console.log(`[INFO] Connecting to ${networks[CHAIN] || networks.neuroweb}`);
     const latestBlock = await provider.getBlockNumber();
-    console.log(`Latest block is ${latestBlock}`);
+    console.log(`[INFO] Latest block on chain: ${latestBlock}`);
+    console.log(`[INFO] Starting from block ${START_BLOCK}`);
 
+    if (!fs.existsSync(path.dirname(OUTPUT_FILE))) {
+      fs.mkdirSync(path.dirname(OUTPUT_FILE), { recursive: true });
+    }
     const writeStream = fs.createWriteStream(OUTPUT_FILE, { flags: "a" });
-    let lastProcessedBlock = START_BLOCK;
 
     for (let batchStart = START_BLOCK; batchStart <= latestBlock; batchStart += BATCH_SIZE) {
       const batchEnd = Math.min(batchStart + BATCH_SIZE - 1, latestBlock);
-
       const batchPromises = [];
       for (let blockNumber = batchStart; blockNumber <= batchEnd; blockNumber++) {
-        const block = getBlockWithRetry(blockNumber);
-        batchPromises.push(block);
+        batchPromises.push(getBlockWithRetry(blockNumber));
       }
 
+      await sleep(1000);
       const blocks = await Promise.all(batchPromises);
 
       for (const block of blocks) {
-        console.log("Processing block", block.number);
-        for (const tx of block.transactions) {
-          console.log(`Processing transaction ${tx}`);
-          const transaction = await getTransactionDetails(tx);
+        console.log(
+          `[INFO] Processing block ${block.number} with ${block.transactions.length} transactions...`
+        );
+        if (!block || !block.transactions) {
+          continue;
+        }
 
-          if (
-            transaction &&
-            transaction.to &&
-            transaction.to.toLowerCase() === CONTRACT_ADDRESS.toLowerCase()
-          ) {
-            console.log(`TX ${tx} is to the contract address`);
+        for (const txHash of block.transactions) {
+          const transaction = await getTransactionDetails(txHash);
+          if (!transaction) continue;
 
-            if (addresses.includes(transaction.from.toLowerCase())) {
-              console.log(`Address ${transaction.from.toLowerCase()} is already processed`);
-              continue;
+          if (transaction.to === CONTRACT_ADDRESS) {
+            console.log(`[MATCH] TX ${txHash} is sent to contract ${CONTRACT_ADDRESS}`);
+
+            if (!addresses.has(transaction.from)) {
+              console.log(`[NEW ADDRESS] ${transaction.from} interacted with contract. Saving...`);
+              writeStream.write(`${transaction.from}\n`);
+              addresses.add(transaction.from);
             } else {
-              writeStream.write(`${transaction.from.toLowerCase()}\n`);
-              addresses.push(transaction.from.toLowerCase());
+              console.log(`[SKIP] Address ${transaction.from} already recorded.`);
             }
           }
+          await sleep(200); // Prevent RPC overload
         }
-        lastProcessedBlock = block.number;
       }
     }
 
-    writeStream.write(`\nLast processed block: ${lastProcessedBlock}\n`);
-    console.log("Finished processing blocks.");
+    console.log("\n✅ [SUCCESS] Finished processing all blocks.");
     writeStream.close();
   } catch (err) {
-    console.error("Error processing blocks:", err);
+    console.error("\n⛔ [ERROR] Fatal error in processing blocks:", err);
   }
 }
 
